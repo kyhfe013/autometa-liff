@@ -92,6 +92,11 @@ function run(){
   }
 
   liff.init({ liffId: liffId })
+    .catch(function(){
+      // ★ここで失敗するのは治療院側の設定★ 患者の電波のせいにしない
+      fail("この QR は使えません。治療院にお伝えください。");
+      throw "init";
+    })
     .then(function(){
       if (!liff.isLoggedIn()){ liff.login(); return null; }   // 戻ってきたら、もう一度ここを通る
       var token = liff.getIDToken();
@@ -121,7 +126,8 @@ function run(){
         fail("もう一度 QR を読んでください。");
       }
     })
-    .catch(function(){
+    .catch(function(e){
+      if (e === "init") return;                                // すでに出している
       fail("通信できませんでした。電波の良い場所で、もう一度 QR を読んでください。");
     });
 }
