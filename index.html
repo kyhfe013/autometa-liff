@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>お知らせの登録</title>
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --ink:#1b1f23; --sub:#5b646e;
+    --line:#e3e7eb; --ok:#06c755; --ng:#c0392b;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#15181c; --card:#1e2227; --ink:#eef1f4; --sub:#a7b0ba; --line:#2d333a;
+    }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+    display:flex; align-items:center; justify-content:center;
+    min-height:100dvh; padding:24px 16px;
+  }
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:16px;
+    padding:28px 22px; width:100%; max-width:420px; text-align:center;
+  }
+  .mark{font-size:44px; line-height:1; margin-bottom:14px}
+  h1{font-size:19px; margin:0 0 10px; font-weight:700}
+  p{font-size:15px; line-height:1.75; color:var(--sub); margin:0 0 6px}
+  .ok h1{color:var(--ok)}
+  .ng h1{color:var(--ng)}
+  .note{
+    margin-top:18px; padding-top:16px; border-top:1px solid var(--line);
+    font-size:13px; color:var(--sub); line-height:1.7;
+  }
+  .spin{
+    width:30px; height:30px; margin:4px auto 16px; border-radius:50%;
+    border:3px solid var(--line); border-top-color:var(--sub);
+    animation:r .8s linear infinite;
+  }
+  @keyframes r{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="card" id="box">
+  <div class="spin"></div>
+  <h1>登録しています</h1>
+  <p>そのままお待ちください。</p>
+</div>
+
+<script>
+/* AutoMeta 対象者の登録
+ *
+ *   治療院から渡された QR を読むと、このページが LINE の中で開く。
+ *   ここで行うのは「合言葉」と「LINE の ID」を治療院へ渡すことだけ。
+ *   ★氏名・生年月日・電話番号・メールアドレスは一切扱わない★
+ *
+ *   ?l=<LIFF ID>   … 治療院の LIFF アプリ（登録した URL の側に入っている）
+ *   ?p=<合言葉>    … 患者ごとの QR の側に入っている
+ */
+var GAS = "https://script.google.com/macros/s/AKfycbxZy7hP0-oSJED1hWNhRV4mW8aW4byQm06rG85oHjFaoRmJkMLoc8QnylGddz_5m5ED/exec";
+
+function q(name){
+  var m = new RegExp("[?&]" + name + "=([^&#]+)").exec(location.search);
+  return m ? decodeURIComponent(m[1]) : "";
+}
+
+function show(cls, mark, title, body, note){
+  var box = document.getElementById("box");
+  box.className = "card " + cls;
+  box.innerHTML =
+      '<div class="mark">' + mark + '</div>'
+    + '<h1>' + title + '</h1>'
+    + '<p>' + body + '</p>'
+    + (note ? '<div class="note">' + note + '</div>' : '');
+}
+
+function fail(body){
+  show("ng", "！", "登録できませんでした", body,
+       "この画面を閉じて、治療院にお伝えください。");
+}
+
+function run(){
+  var liffId = q("l");
+  var code   = q("p").toUpperCase();
+
+  if (!liffId){ fail("この QR は使えません。URL が正しくありません。"); return; }
+  if (!/^[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(code)){
+    fail("この QR は使えません。合言葉が読み取れませんでした。"); return;
+  }
+
+  liff.init({ liffId: liffId })
+    .then(function(){
+      if (!liff.isLoggedIn()){ liff.login(); return null; }   // 戻ってきたら、もう一度ここを通る
+      var token = liff.getIDToken();
+      if (!token) throw new Error("no_token");
+      return fetch(GAS, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },  // 事前確認を起こさない形で送る
+        body: JSON.stringify({ act: "put", p: code, idToken: token })
+      });
+    })
+    .then(function(res){
+      if (res === null) return null;                           // ログインへ飛んだところ
+      return res.json();
+    })
+    .then(function(r){
+      if (r === null) return;
+      if (r && r.ok){
+        show("ok", "✓", "登録が完了しました",
+             "施術が終わると、このトークにお知らせが届きます。",
+             "この画面は閉じて構いません。<br>"
+           + "お知らせが不要になったときは、治療院にお伝えください。");
+      } else if (r && r.why === "bad_code"){
+        fail("合言葉が正しくありません。");
+      } else if (r && r.why === "verify_failed"){
+        fail("LINE の確認が通りませんでした。もう一度 QR を読んでください。");
+      } else {
+        fail("もう一度 QR を読んでください。");
+      }
+    })
+    .catch(function(){
+      fail("通信できませんでした。電波の良い場所で、もう一度 QR を読んでください。");
+    });
+}
+
+if (window.liff) { run(); }
+else { window.addEventListener("load", run); }
+</script>
+</body>
+</html>
