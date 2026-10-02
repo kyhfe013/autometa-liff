@@ -57,8 +57,11 @@
  *   ここで行うのは「合言葉」と「LINE の ID」を治療院へ渡すことだけ。
  *   ★氏名・生年月日・電話番号・メールアドレスは一切扱わない★
  *
- *   ?l=<LIFF ID>   … 治療院の LIFF アプリ（登録した URL の側に入っている）
- *   ?p=<合言葉>    … 患者ごとの QR の側に入っている
+ *   ?p=<合言葉>  ?l=<LIFF ID>
+ *     どちらも QR（LIFF URL）の側に入っている。
+ *     ★エンドポイント URL には何も付けない★
+ *     付けた問い合わせ文字列は LINE 側で落ちることがあり、
+ *     実機で「URL が正しくありません」になった（2026-10-02）。
  */
 var GAS = "https://script.google.com/macros/s/AKfycbxZy7hP0-oSJED1hWNhRV4mW8aW4byQm06rG85oHjFaoRmJkMLoc8QnylGddz_5m5ED/exec";
 
@@ -86,9 +89,13 @@ function run(){
   var liffId = q("l");
   var code   = q("p").toUpperCase();
 
-  if (!liffId){ fail("この QR は使えません。URL が正しくありません。"); return; }
+  // l（LIFF ID）と p（合言葉）は、どちらも QR の側に入っている。
+  // 片方でも欠けていれば、発行し直してもらうのがいちばん早い。
+  if (!liffId){
+    fail("この QR は古い形式です。治療院で発行し直してください。"); return;
+  }
   if (!/^[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(code)){
-    fail("この QR は使えません。合言葉が読み取れませんでした。"); return;
+    fail("合言葉を読み取れませんでした。治療院で発行し直してください。"); return;
   }
 
   liff.init({ liffId: liffId })

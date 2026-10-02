@@ -10,10 +10,12 @@
 
 | | |
 |---|---|
-| 治療院が LIFF に登録する URL | `<公開先>/?l=<LIFF ID>` |
-| 患者が読む QR | `https://liff.line.me/<LIFF ID>?p=<合言葉>` |
+| 治療院が LIFF に登録する URL | `https://kyhfe013.github.io/autometa-liff/`（そのまま。何も足さない） |
+| 患者が読む QR・リンク | `https://liff.line.me/<LIFF ID>?p=<合言葉>&l=<LIFF ID>` |
 
-`l` はエンドポイント側、`p` は QR 側に入る。LINE が両方をこのページへ渡す。
+**`l` も `p` も QR の側に入れる。** エンドポイント URL に付けた問い合わせ文字列は
+LINE 側で落ちることがあり、実機で「URL が正しくありません」になった（2026-10-02）。
+QR（LIFF URL）側の問い合わせ文字列は、必ずページまで届く。
 
 ## 公開先
 
