@@ -65,10 +65,34 @@
  */
 var GAS = "https://script.google.com/macros/s/AKfycbxZy7hP0-oSJED1hWNhRV4mW8aW4byQm06rG85oHjFaoRmJkMLoc8QnylGddz_5m5ED/exec";
 
-function q(name){
-  var m = new RegExp("[?&]" + name + "=([^&#]+)").exec(location.search);
-  return m ? decodeURIComponent(m[1]) : "";
+// ★LINE は問い合わせ文字列を liff.state に畳んで渡すことがある★
+//   そのとき location.search は ?liff.state=%3Fp%3D… だけになり、
+//   p も l も直接は見えない。SDK が元に戻すのは liff.init() のあとで、
+//   こちらは init の前に読む必要があるので、自分でほどく（2026-10-02）。
+//   念のため、場所（#）側も見る。
+function allParams(){
+  var out = {};
+  function eat(qs){
+    if (!qs) return;
+    if (qs.charAt(0) === "?" || qs.charAt(0) === "#") qs = qs.slice(1);
+    qs.split("&").forEach(function(pair){
+      if (!pair) return;
+      var i = pair.indexOf("=");
+      var k = i < 0 ? pair : pair.slice(0, i);
+      var v = i < 0 ? ""   : pair.slice(i + 1);
+      try { k = decodeURIComponent(k); v = decodeURIComponent(v); } catch (e) {}
+      if (!(k in out)) out[k] = v;
+    });
+  }
+  eat(location.search);
+  eat(location.hash);
+  // liff.state の中身は、元の「?p=…&l=…」がそのまま入っている
+  var st = out["liff.state"];
+  if (st) eat(st);
+  return out;
 }
+var PARAMS = allParams();
+function q(name){ return PARAMS[name] || ""; }
 
 function show(cls, mark, title, body, note){
   var box = document.getElementById("box");
