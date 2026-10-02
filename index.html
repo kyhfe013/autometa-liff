@@ -130,17 +130,32 @@ function run(){
     })
     .then(function(){
       if (!liff.isLoggedIn()){ liff.login(); return null; }   // 戻ってきたら、もう一度ここを通る
+      // ★身元証明は openid の許可が要る★
+      //   LIFF アプリのスコープに openid が無いと、ここが空で返る。
+      //   2026-10-02、実機で「通信できませんでした」と出た原因がこれ。
       var token = liff.getIDToken();
-      if (!token) throw new Error("no_token");
+      if (!token){
+        fail("治療院の設定が足りません（LIFF の許可に openid が必要）。<br>"
+           + "この画面を治療院にお見せください。");
+        throw "noid";
+      }
       return fetch(GAS, {
         method: "POST",
         headers: { "Content-Type": "text/plain;charset=utf-8" },  // 事前確認を起こさない形で送る
         body: JSON.stringify({ act: "put", p: code, idToken: token })
+      }).catch(function(){
+        fail("登録の窓口につながりませんでした。<br>"
+           + "電波の良い場所で、もう一度お試しください。");
+        throw "net";
       });
     })
     .then(function(res){
       if (res === null) return null;                           // ログインへ飛んだところ
-      return res.json();
+      return res.json().catch(function(){
+        fail("登録の窓口から、読み取れない返事がありました。<br>"
+           + "この画面を治療院にお見せください。");
+        throw "parse";
+      });
     })
     .then(function(r){
       if (r === null) return;
@@ -158,8 +173,9 @@ function run(){
       }
     })
     .catch(function(e){
-      if (e === "init") return;                                // すでに出している
-      fail("通信できませんでした。電波の良い場所で、もう一度 QR を読んでください。");
+      // すでに出しているものは、上書きしない
+      if (e === "init" || e === "noid" || e === "net" || e === "parse") return;
+      fail("登録の途中で止まりました。<br>この画面を治療院にお見せください。");
     });
 }
 
