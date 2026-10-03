@@ -40,6 +40,10 @@
   p{font-size:15px; line-height:1.75; color:var(--sub); margin:0 0 6px}
   .ok h1{color:var(--ok)}
   .ng h1{color:var(--ng)}
+  .warn h1{color:#c77700}
+  .add{display:block;margin:18px auto 4px;padding:13px 10px;max-width:260px;
+       background:var(--ok);color:#fff;border-radius:10px;text-decoration:none;
+       font-size:16px;font-weight:700;text-align:center}
   .note{
     margin-top:18px; padding-top:16px; border-top:1px solid var(--line);
     font-size:13px; color:var(--sub); line-height:1.7;
@@ -118,6 +122,27 @@ function fail(body){
        "この画面を閉じて、セラピストにお伝えください。");
 }
 
+function doneOk(){
+  show("ok", "✓", "登録を受け付けました",
+       "このトークに確認のメッセージが届いたら、準備は完了です。",
+       "この画面は閉じて構いません。<br>"
+     + "お知らせが不要になったときは、セラピストにお伝えください。");
+}
+
+// 友だち追加がまだのとき。ここで止めず、押せる形で出す。
+function needFriend(){
+  var oa = q("a");
+  var btn = oa
+    ? '<a class="add" href="https://line.me/R/ti/p/' + encodeURIComponent(oa) + '">友だち追加する</a>'
+    : '';
+  show("warn", "！", "あと 1 歩です",
+       "友だち追加がされていないため、このままではお知らせが届きません。"
+     + btn,
+       oa ? "上のボタンを押して「追加」を選んでください。<br>"
+          + "追加すると、確認のメッセージが届きます。"
+          : "この画面を閉じて、セラピストにお伝えください。");
+}
+
 function run(){
   var liffId = q("l");
   var code   = q("p").toUpperCase();
@@ -169,12 +194,13 @@ function run(){
     .then(function(r){
       if (r === null) return;
       if (r && r.ok){
-        // ★ここではまだ「完了」と言い切らない★
-        //   セラピストの承認を経て、確認のメッセージが届いて初めて成立する。
-        show("ok", "✓", "登録を受け付けました",
-             "このトークに確認のメッセージが届いたら、準備は完了です。",
-             "この画面は閉じて構いません。<br>"
-           + "お知らせが不要になったときは、セラピストにお伝えください。");
+        // ★友だち追加がまだなら、その場で気づいてもらう★
+        //   同意画面のチェックは最初からオフで、見落とす人が多い。
+        //   セラピストが気づくまで誰も分からない状態にしない（2026-10-03）。
+        return liff.getFriendship().then(function(f){
+          if (f && f.friendFlag){ doneOk(); return; }
+          needFriend();
+        }, function(){ doneOk(); });               // 判定できないときは通す
       } else if (r && r.why === "bad_code"){
         fail("合言葉が正しくありません。");
       } else if (r && r.why === "verify_failed"){
