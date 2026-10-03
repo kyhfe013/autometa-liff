@@ -7,10 +7,10 @@
 <!-- ★LINE などに貼ったときの見出し★
      指定しないと、読み込み中の文字（「登録しています」）が説明として拾われる。
      2026-10-03、トークに貼ると「お知らせの登録／登録しています」とだけ出た。 -->
-<meta name="description" content="友だち追加すると、セラピーが完了したときに LINE でお知らせが届きます。">
+<meta name="description" content="友だち追加すると、セラピーが完了したときに LINE でお知らせが届きます。お名前やご連絡先の入力はありません。">
 <meta property="og:type" content="website">
 <meta property="og:title" content="セラピーの報告を受け取る">
-<meta property="og:description" content="タップして友だち追加すると、セラピーが完了したときに LINE でお知らせが届きます。">
+<meta property="og:description" content="タップして友だち追加すると、セラピーが完了したときに LINE でお知らせが届きます。お名前やご連絡先の入力はありません。">
 <meta property="og:url" content="https://kyhfe013.github.io/autometa-liff/">
 <meta property="og:site_name" content="セラピーの報告">
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
@@ -41,6 +41,8 @@
   .ok h1{color:var(--ok)}
   .ng h1{color:var(--ng)}
   .warn h1{color:#c77700}
+  .from{font-size:13px;color:var(--sub);margin:0 0 12px;padding-bottom:10px;
+        border-bottom:1px solid var(--line)}
   .add{display:block;margin:18px auto 4px;padding:13px 10px;max-width:260px;
        background:var(--ok);color:#fff;border-radius:10px;text-decoration:none;
        font-size:16px;font-weight:700;text-align:center}
@@ -59,8 +61,8 @@
 <body>
 <div class="card" id="box">
   <div class="spin"></div>
-  <h1>登録しています</h1>
-  <p>そのままお待ちください。</p>
+  <h1>セラピーの報告を受け取る</h1>
+  <p>登録しています。そのままお待ちください。</p>
 </div>
 
 <script>
@@ -107,11 +109,19 @@ function allParams(){
 var PARAMS = allParams();
 function q(name){ return PARAMS[name] || ""; }
 
+function esc(t){
+  return String(t).replace(/[&<>"']/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+  });
+}
+
 function show(cls, mark, title, body, note){
   var box = document.getElementById("box");
+  var shop = q("s");
   box.className = "card " + cls;
   box.innerHTML =
-      '<div class="mark">' + mark + '</div>'
+      (shop ? '<div class="from">' + esc(shop) + '</div>' : '')
+    + '<div class="mark">' + mark + '</div>'
     + '<h1>' + title + '</h1>'
     + '<p>' + body + '</p>'
     + (note ? '<div class="note">' + note + '</div>' : '');
@@ -124,9 +134,11 @@ function fail(body){
 
 function doneOk(){
   show("ok", "✓", "登録を受け付けました",
-       "このトークに確認のメッセージが届いたら、準備は完了です。",
-       "この画面は閉じて構いません。<br>"
-     + "お知らせが不要になったときは、セラピストにお伝えください。");
+       "このトークに確認のメッセージが届いたら、準備は完了です。"
+     + "<br>数分かかることがあります。",
+       "お名前・ご連絡先の入力は必要ありません。<br>"
+     + "お知らせが不要になったときは、いつでもお申し付けください。<br>"
+     + "この画面は閉じて構いません。");
 }
 
 // 友だち追加がまだのとき。ここで止めず、押せる形で出す。
