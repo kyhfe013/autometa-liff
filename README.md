@@ -10,7 +10,7 @@
 
 | | |
 |---|---|
-| セラピストが LIFF に登録する URL | `https://kyhfe013.github.io/autometa-liff/`（そのまま。何も足さない） |
+| セラピストが LIFF に登録する URL | `https://therapyreport.jp/`（そのまま。何も足さない） |
 | 患者が読む QR・リンク | `https://liff.line.me/<LIFF ID>?p=<合言葉>&l=<LIFF ID>` |
 
 **`l` も `p` も QR の側に入れる。** エンドポイント URL に付けた問い合わせ文字列は
