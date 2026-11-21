@@ -104,9 +104,54 @@ function allParams(){
   // liff.state の中身は、元の「?p=…&l=…」がそのまま入っている
   var st = out["liff.state"];
   if (st) eat(st);
+  // ★LINE のログインから戻ると、p と l が URL から消える★
+  //   LINE の外（ブラウザ）で開くと liff.login() を通る。戻り先を指定しないと
+  //   エンドポイントだけに戻り、「この QR は古い形式です」になった（2026-11-21）。
+  //   戻り先の URL（liffRedirectUri）に残っていれば、そこから読む。
+  var back = out["liffRedirectUri"];
+  if (back && back.indexOf("?") >= 0){
+    var rest = back.slice(back.indexOf("?"));
+    eat(rest.split("#")[0]);
+    var st2 = out["liff.state"];
+    if (st2) eat(st2);
+  }
   return out;
 }
+
+// ログインの前に、読めた値をこの端末に控えておく（30 分だけ有効）。
+//   戻ってきて URL に無ければ、控えから戻す。合言葉は短時間で消す。
+var KEEP_KEY = "autometa.reg";
+var KEEP_NAMES = ["p", "l", "a", "s"];
+function keepParams(pr){
+  try {
+    var v = { t: Date.now() };
+    KEEP_NAMES.forEach(function(k){ if (pr[k]) v[k] = pr[k]; });
+    localStorage.setItem(KEEP_KEY, JSON.stringify(v));
+  } catch (e) {}
+}
+function restoreParams(pr){
+  try {
+    var v = JSON.parse(localStorage.getItem(KEEP_KEY) || "null");
+    if (!v || !v.t || Date.now() - v.t > 30 * 60 * 1000) return;
+    KEEP_NAMES.forEach(function(k){ if (!pr[k] && v[k]) pr[k] = v[k]; });
+  } catch (e) {}
+}
+function forgetParams(){
+  try { localStorage.removeItem(KEEP_KEY); } catch (e) {}
+}
+
+// ログインの戻り先。p・l などを付けたまま、このページへ戻す。
+function loginBackUrl(){
+  var qs = [];
+  KEEP_NAMES.forEach(function(k){
+    if (PARAMS[k]) qs.push(k + "=" + encodeURIComponent(PARAMS[k]));
+  });
+  return location.origin + location.pathname + (qs.length ? "?" + qs.join("&") : "");
+}
+
 var PARAMS = allParams();
+if (PARAMS["p"] && PARAMS["l"]) keepParams(PARAMS);
+else restoreParams(PARAMS);
 function q(name){ return PARAMS[name] || ""; }
 
 function esc(t){
@@ -175,7 +220,10 @@ function run(){
       throw "init";
     })
     .then(function(){
-      if (!liff.isLoggedIn()){ liff.login(); return null; }   // 戻ってきたら、もう一度ここを通る
+      if (!liff.isLoggedIn()){                                  // 戻ってきたら、もう一度ここを通る
+        liff.login({ redirectUri: loginBackUrl() });           // 戻り先を指定しないと p・l が落ちる
+        return null;
+      }
       // ★身元証明は openid の許可が要る★
       //   LIFF アプリのスコープに openid が無いと、ここが空で返る。
       //   2026-10-02、実機で「通信できませんでした」と出た原因がこれ。
@@ -206,6 +254,7 @@ function run(){
     .then(function(r){
       if (r === null) return;
       if (r && r.ok){
+        forgetParams();
         // ★友だち追加がまだなら、その場で気づいてもらう★
         //   同意画面のチェックは最初からオフで、見落とす人が多い。
         //   セラピストが気づくまで誰も分からない状態にしない（2026-10-03）。
